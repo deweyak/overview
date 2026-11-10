@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniView — 13-Site Live Multiview Grid</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              850: '#141e33',
+              900: '#0f172a',
+              950: '#070b14',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.5);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.7);
+    }
+
+    /* Glassmorphism subtle utilities */
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .light .glass-nav {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .card-glass {
+      background: rgba(30, 41, 59, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .light .card-glass {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Scaling / Thumbnail preview mode */
+    .scale-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0b1120;
+    }
+    .light .scale-wrapper {
+      background: #f1f5f9;
+    }
+    
+    .iframe-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* CSS grid preset variations */
+    .grid-preset-auto {
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+    .grid-preset-2x7 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .grid-preset-3x5 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .grid-preset-4x4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .grid-preset-5col {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    /* Smooth Tile Fade */
+    .tile-enter {
+      animation: fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.97);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col transition-colors duration-200">
+
+  <!-- TOP APP BAR -->
+  <header class="glass-nav sticky top-0 z-40 border-b border-slate-800/80 px-4 py-2.5 transition-colors">
+    <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Stats -->
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-sky-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-black text-lg">
+          <i class="fa-solid fa-table-cells-large text-sm"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold tracking-tight text-white dark:text-white light:text-slate-900">OmniView 13</h1>
+            <span class="px-2 py-0.5 text-[10px] font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-full flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="site-count-badge">13 Feeds</span>
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Simultaneous Real-Time Multiview Surface</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions & Global Controls -->
+      <div class="flex items-center flex-wrap gap-2">
+        
+        <!-- Live Domain Search / Filter -->
+        <div class="relative flex items-center">
+          <i class="fa-solid fa-magnifying-glass absolute left-2.5 text-slate-400 text-xs pointer-events-none"></i>
+          <input
+            id="site-search-input"
+            type="text"
+            placeholder="Filter domains..."
+            class="pl-8 pr-3 py-1.5 text-xs bg-slate-800/90 light:bg-slate-200 border border-slate-700 light:border-slate-300 rounded-lg text-slate-200 light:text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 w-32 sm:w-44 transition-all"
+          />
+        </div>
+
+        <!-- Refresh All Button -->
+        <button id="btn-refresh-all" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white flex items-center gap-2 shadow-md shadow-indigo-600/30 transition">
+          <i class="fa-solid fa-arrows-rotate text-[11px]" id="refresh-all-icon"></i>
+          <span>Refresh All</span>
+        </button>
+
+        <!-- Auto-Refresh Interval Select -->
+        <div class="flex items-center bg-slate-800/90 light:bg-slate-200 border border-slate-700 light:border-slate-300 rounded-lg px-2.5 py-1 text-xs">
+          <i class="fa-regular fa-clock text-slate-400 mr-2 text-[11px]"></i>
+          <span class="text-slate-400 mr-1.5 hidden sm:inline">Timer:</span>
+          <select id="auto-refresh-select" class="bg-transparent text-slate-200 light:text-slate-800 focus:outline-none cursor-pointer text-xs font-medium">
+            <option value="0" class="bg-slate-900 text-white">Disabled</option>
+            <option value="30" class="bg-slate-900 text-white">30s</option>
+            <option value="60" class="bg-slate-900 text-white">1 min</option>
+            <option value="120" class="bg-slate-900 text-white">2 min</option>
+            <option value="300" class="bg-slate-900 text-white">5 min</option>
+          </select>
+          <span id="timer-countdown" class="ml-2 font-mono text-[10px] text-indigo-400 hidden"></span>
+        </div>
+
+        <!-- Grid Layout Switcher -->
+        <div class="flex items-center bg-slate-800/90 light:bg-slate-200 border border-slate-700 light:border-slate-300 rounded-lg p-0.5 text-xs">
+          <button class="layout-btn px-2 py-1 rounded text-slate-300 hover:text-white" data-layout="auto" title="Auto Flexible Grid">
+            <i class="fa-solid fa-shapes"></i>
+          </button>
+          <button class="layout-btn px-2 py-1 rounded text-slate-300 hover:text-white" data-layout="4x4" title="4 Columns Grid">
+            <i class="fa-solid fa-table-cells"></i>
+          </button>
+          <button class="layout-btn px-2 py-1 rounded text-slate-300 hover:text-white" data-layout="3x5" title="3 Columns Grid">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </button>
+          <button class="layout-btn px-2 py-1 rounded text-slate-300 hover:text-white" data-layout="2x7" title="2 Wide Columns">
+            <i class="fa-solid fa-columns"></i>
+          </button>
+        </div>
+
+        <!-- Height Profile: Compact / Medium / Tall -->
+        <div class="hidden md:flex items-center bg-slate-800/90 light:bg-slate-200 border border-slate-700 light:border-slate-300 rounded-lg px-2 py-1 text-xs">
+          <span class="text-slate-400 text-[11px] mr-2">Tile Height:</span>
+          <button id="height-compact-btn" class="px-1.5 py-0.5 text-[11px] rounded text-slate-300 hover:text-white" title="Compact (320px)">S</button>
+          <button id="height-medium-btn" class="px-1.5 py-0.5 text-[11px] rounded bg-slate-700 text-white font-bold" title="Medium (460px)">M</button>
+          <button id="height-tall-btn" class="px-1.5 py-0.5 text-[11px] rounded text-slate-300 hover:text-white" title="Tall (620px)">L</button>
+        </div>
+
+        <!-- Add Custom Site Modal Trigger -->
+        <button id="btn-add-site" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-95 text-slate-200 flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-plus text-emerald-400"></i>
+          <span class="hidden sm:inline">Add Site</span>
+        </button>
+
+        <!-- Help / Info Modal Trigger -->
+        <button id="btn-help" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs" title="Embedding Guide & Restrictions">
+          <i class="fa-solid fa-circle-info"></i>
+        </button>
+
+        <!-- Reset to Default 13 Sites -->
+        <button id="btn-reset" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-rose-900/50 border border-slate-700 text-slate-400 hover:text-rose-300 flex items-center justify-center text-xs" title="Reset to 13 Default Sites">
+          <i class="fa-solid fa-rotate-left"></i>
+        </button>
+
+        <!-- Dark/Light Mode Toggle -->
+        <button id="btn-theme-toggle" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 flex items-center justify-center text-xs" title="Toggle Theme">
+          <i class="fa-solid fa-sun" id="theme-icon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- BANNER NOTIFICATION: X-Frame-Options Information Bar (dismissible) -->
+  <div id="notice-banner" class="bg-indigo-950/70 border-b border-indigo-800/60 px-4 py-2 text-xs text-indigo-200 flex items-center justify-between">
+    <div class="flex items-center gap-2 max-w-5xl">
+      <i class="fa-solid fa-shield-halved text-indigo-400 text-sm"></i>
+      <span>
+        <strong>Embedding Notice:</strong> Some major web portals (like Google, Twitter/X, or GitHub) restrict direct iframe display using <code class="px-1 py-0.5 bg-indigo-900/80 rounded font-mono text-[10px]">X-Frame-Options: SAMEORIGIN</code> or strict CSP. Every tile includes an instant <strong>"Open in New Tab"</strong> button <i class="fa-solid fa-arrow-up-right-from-square text-[10px] mx-1"></i> and interactive diagnostics.
+      </span>
+    </div>
+    <button onclick="document.getElementById('notice-banner').classList.add('hidden')" class="text-indigo-400 hover:text-white text-xs px-2 py-1">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="flex-1 p-3 md:p-4 max-w-[1920px] w-full mx-auto">
+    <!-- Grid Container for the 13 sites -->
+    <div id="sites-grid" class="grid gap-3.5 grid-preset-auto transition-all duration-300">
+      <!-- Injected dynamically via JavaScript -->
+    </div>
+  </main>
+
+  <!-- MODAL: ADD / EDIT SITE -->
+  <div id="site-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl relative text-left">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 id="modal-title" class="text-base font-semibold text-white flex items-center gap-2">
+          <i class="fa-solid fa-globe text-indigo-400"></i> Edit Feed Target
+        </h3>
+        <button id="modal-close-btn" class="text-slate-400 hover:text-white text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="site-form" class="mt-4 space-y-4">
+        <input type="hidden" id="form-site-id" value="">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Site Title</label>
+          <input type="text" id="form-site-title" required placeholder="e.g. Hacker News Live"
+            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">URL (https://...)</label>
+          <input type="url" id="form-site-url" required placeholder="https://example.com"
+            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500">
+          <p class="text-[11px] text-slate-400 mt-1">Make sure the destination accepts iframe embedding or use an embed URL.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Category / Tag</label>
+          <input type="text" id="form-site-category" placeholder="News, Weather, Tech, Stats"
+            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- Sample presets for quick swap -->
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">Quick Presets (100% Embed-Friendly):</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" class="preset-pill px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-slate-300" data-name="Wikipedia Special" data-url="https://en.m.wikipedia.org/wiki/Special:Random" data-cat="Knowledge">Wiki Random</button>
+            <button type="button" class="preset-pill px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-slate-300" data-name="Hacker News (Hackerweb)" data-url="https://hackerweb.app" data-cat="Tech News">HackerWeb</button>
+            <button type="button" class="preset-pill px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-slate-300" data-name="OpenStreetMap" data-url="https://www.openstreetmap.org/export/embed.html?bbox=-0.15%2C51.50%2C-0.10%2C51.52&layer=mapnik" data-cat="Maps">OpenStreetMap</button>
+            <button type="button" class="preset-pill px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] text-slate-300" data-name="wttr.in Weather" data-url="https://wttr.in/?format=3" data-cat="Weather">wttr.in</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+          <button type="button" id="form-cancel-btn" class="px-4 py-2 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg">Cancel</button>
+          <button type="submit" class="px-4 py-2 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow">Save Feed</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MAXIMIZE / FULL SCREEN PANEL VIEW -->
+  <div id="max-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col p-2 md:p-6 hidden">
+    <div class="flex items-center justify-between pb-3 text-white px-2">
+      <div class="flex items-center gap-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+        <h2 id="max-modal-title" class="text-base md:text-lg font-bold">Full Screen Inspection</h2>
+        <span id="max-modal-url" class="text-xs text-slate-400 font-mono hidden sm:inline truncate max-w-md"></span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="max-modal-refresh" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs">
+          <i class="fa-solid fa-arrows-rotate mr-1"></i> Reload
+        </button>
+        <button id="max-modal-external" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs">
+          <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Open Tab
+        </button>
+        <button id="max-modal-close" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-white text-xs">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+    </div>
+    <div class="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative">
+      <iframe id="max-modal-iframe" src="" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    </div>
+  </div>
+
+  <!-- MODAL: HELP & EMBED EXPLANATION -->
+  <div id="help-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-2xl p-6 shadow-2xl relative text-left max-h-[85vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-semibold text-white flex items-center gap-2">
+          <i class="fa-solid fa-circle-question text-indigo-400"></i> Embedding & Dashboard Tips
+        </h3>
+        <button id="help-close-btn" class="text-slate-400 hover:text-white text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <div class="mt-4 space-y-3.5 text-xs text-slate-300 leading-relaxed">
+        <p><strong>OmniView</strong> renders 13 web services in tandem in a unified screen view. To give you the best out-of-the-box experience, it comes pre-loaded with 13 embed-permissive dashboards, readers, trackers, and widgets.</p>
+
+        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700/80">
+          <h4 class="font-bold text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+            <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Why do some websites say "Refused to connect"?
+          </h4>
+          <p class="text-slate-400">
+            Many websites send HTTP headers called <code>X-Frame-Options: SAMEORIGIN</code> or <code>Content-Security-Policy: frame-ancestors 'self'</code>. This prevents unauthorized clickjacking.
+          </p>
+          <p class="mt-1.5 text-slate-400">
+            When a site blocks framing, click the tile's <span class="text-indigo-400 font-semibold"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Tab</span> button or use an official embed URL (like Wikipedia's mobile view, YouTube embed URLs, Google Maps embed URLs, or HackerWeb for HN).
+          </p>
+        </div>
+
+        <h4 class="font-bold text-slate-200 text-xs">Keyboard & Productivity Shortcuts:</h4>
+        <ul class="list-disc pl-4 space-y-1 text-slate-400">
+          <li><strong>R:</strong> Manual quick refresh for all loaded panels.</li>
+          <li><strong>Escape:</strong> Exit maximized view or dismiss open dialogs.</li>
+          <li><strong>Drag / Reorder:</strong> Use the up/down position buttons to customize feed priority.</li>
+        </ul>
+      </div>
+
+      <div class="mt-5 pt-3 border-t border-slate-800 flex justify-end">
+        <button onclick="document.getElementById('help-modal').classList.add('hidden')" class="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // THE 13 SPECIFIED TARGET SITES CONFIGURED FOR SURVEILLANCE & MONITORING
+    const TARGET_SITES = [
+      {
+        id: "site-1",
+        title: "Blue Pill Careers",
+        domain: "bluepillcareers.com",
+        url: "https://bluepillcareers.com",
+        category: "Careers / Portal",
+        icon: "fa-briefcase"
+      },
+      {
+        id: "site-2",
+        title: "Red Pill Careers",
+        domain: "redpillcareers.com",
+        url: "https://redpillcareers.com",
+        category: "Careers / Portal",
+        icon: "fa-network-wired"
+      },
+      {
+        id: "site-3",
+        title: "Rodriguez For Supervisor",
+        domain: "rodriguezforsupervisor.org",
+        url: "https://rodriguezforsupervisor.org",
+        category: "Campaign / Civic",
+        icon: "fa-bullhorn"
+      },
+      {
+        id: "site-4",
+        title: "Dew Me",
+        domain: "dewme.org",
+        url: "https://dewme.org",
+        category: "Portal",
+        icon: "fa-droplet"
+      },
+      {
+        id: "site-5",
+        title: "Slide On In",
+        domain: "slideon.in",
+        url: "https://slideon.in",
+        category: "Interactive / Web",
+        icon: "fa-sliders"
+      },
+      {
+        id: "site-6",
+        title: "Pelland Trust",
+        domain: "pellandtrust.com",
+        url: "https://pellandtrust.com",
+        category: "Trust / Financial",
+        icon: "fa-building-columns"
+      },
+      {
+        id: "site-7",
+        title: "Hogue Customs",
+        domain: "hoguecustoms.com",
+        url: "https://hoguecustoms.com",
+        category: "Custom Shop / Auto",
+        icon: "fa-wrench"
+      },
+      {
+        id: "site-8",
+        title: "Joe Footloose",
+        domain: "joefootloose.com",
+        url: "https://joefootloose.com",
+        category: "Personal / Blog",
+        icon: "fa-shoe-prints"
+      },
+      {
+        id: "site-9",
+        title: "Dewey Biz",
+        domain: "dewey.biz",
+        url: "https://dewey.biz",
+        category: "Commercial / Biz",
+        icon: "fa-chart-line"
+      },
+      {
+        id: "site-10",
+        title: "Sammie Biz",
+        domain: "sammie.biz",
+        url: "https://sammie.biz",
+        category: "Commercial / Biz",
+        icon: "fa-id-badge"
+      },
+      {
+        id: "site-11",
+        title: "Kava You Brilliant SOB",
+        domain: "kavayoubrilliantsonofabitch.com",
+        url: "https://kavayoubrilliantsonofabitch.com",
+        category: "Web / Media",
+        icon: "fa-mug-hot"
+      },
+      {
+        id: "site-12",
+        title: "Dewey Family",
+        domain: "deweyfamily.us",
+        url: "https://deweyfamily.us",
+        category: "Family Network",
+        icon: "fa-house-user"
+      },
+      {
+        id: "site-13",
+        title: "Dewey PW",
+        domain: "dewey.pw",
+        url: "https://dewey.pw",
+        category: "Web Node",
+        icon: "fa-key"
+      }
+    ];
+
+    // APPLICATION STATE
+    let sites = [];
+    let searchQuery = "";
+    let currentTileHeight = "460px";
+    let autoRefreshInterval = 0; // seconds
+    let refreshTimerId = null;
+    let countdownIntervalId = null;
+    let secondsLeft = 0;
+
+    // Load initial configuration
+    function initSites() {
+      // Overwrite or initialize with the requested 13 specific sites
+      const stored = localStorage.getItem('omniview_sites_13_specific');
+      if (stored) {
+        try {
+          sites = JSON.parse(stored);
+        } catch (e) {
+          sites = JSON.parse(JSON.stringify(TARGET_SITES));
+        }
+      } else {
+        sites = JSON.parse(JSON.stringify(TARGET_SITES));
+      }
+      renderGrid();
+      updateBadge();
+    }
+
+    function saveSites() {
+      localStorage.setItem('omniview_sites_13_specific', JSON.stringify(sites));
+      updateBadge();
+    }
+
+    function updateBadge() {
+      document.getElementById('site-count-badge').textContent = `${sites.length} Feeds`;
+    }
+
+    // Render all sites into the dynamic CSS Grid
+    function renderGrid() {
+      const container = document.getElementById('sites-grid');
+      container.innerHTML = '';
+
+      const filteredSites = sites.filter(site => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          site.title.toLowerCase().includes(q) ||
+          site.url.toLowerCase().includes(q) ||
+          (site.category && site.category.toLowerCase().includes(q))
+        );
+      });
+
+      if (filteredSites.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-16 text-center text-slate-400">
+            <i class="fa-solid fa-magnifying-glass text-3xl mb-3 text-slate-600"></i>
+            <p class="text-sm">No domains matching "<strong>${escapeHtml(searchQuery)}</strong>"</p>
+            <button onclick="document.getElementById('site-search-input').value=''; searchQuery=''; renderGrid();" class="mt-3 px-3 py-1.5 bg-slate-800 text-indigo-400 rounded-lg text-xs font-semibold hover:bg-slate-700">Clear Search</button>
+          </div>
+        `;
+        return;
+      }
+
+      filteredSites.forEach((site, index) => {
+        const card = document.createElement('div');
+        card.className = "card-glass border border-slate-800/90 rounded-xl overflow-hidden flex flex-col shadow-lg shadow-black/20 tile-enter group hover:border-slate-700 transition-all duration-200";
+        card.style.height = currentTileHeight;
+        card.setAttribute('data-id', site.id);
+
+        const domainHost = site.domain || (new URL(site.url).hostname);
+        const faviconUrl = `https://www.google.com/s2/favicons?domain=${domainHost}&sz=32`;
+
+        card.innerHTML = `
+          <!-- Tile Header / Controls -->
+          <div class="px-3 py-2 bg-slate-900/95 light:bg-slate-100 border-b border-slate-800/80 light:border-slate-200 flex items-center justify-between gap-2 select-none">
+            <div class="flex items-center space-x-2.5 min-w-0">
+              <span class="w-5 h-5 rounded-md bg-slate-800 light:bg-slate-300 text-slate-400 flex items-center justify-center text-[10px] font-bold shrink-0">
+                ${index + 1}
+              </span>
+              <img src="${faviconUrl}" alt="" class="w-4 h-4 rounded-sm shrink-0" onerror="this.src='https://placehold.co/16x16/334155/94a3b8?text=•'" />
+              <div class="truncate">
+                <div class="flex items-center gap-1.5 truncate">
+                  <span class="text-xs font-semibold text-slate-200 light:text-slate-800 truncate leading-tight" title="${site.title}">
+                    ${escapeHtml(site.title)}
+                  </span>
+                  <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title="Active Feed"></span>
+                </div>
+                <span class="text-[10px] text-slate-400 font-mono block truncate" title="${site.url}">
+                  ${domainHost}
+                </span>
+              </div>
+            </div>
+
+            <!-- Action Buttons for Individual Tile -->
+            <div class="flex items-center space-x-1 shrink-0">
+              <!-- Reorder Up/Down -->
+              <button onclick="moveSite(${index}, -1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-[10px] transition" title="Move Left/Up">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <button onclick="moveSite(${index}, 1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-[10px] transition" title="Move Right/Down">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+
+              <!-- Reload this single tile -->
+              <button onclick="reloadTile('${site.id}')" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-indigo-400 flex items-center justify-center text-[10px] transition" title="Reload Frame">
+                <i class="fa-solid fa-rotate-right" id="reload-icon-${site.id}"></i>
+              </button>
+
+              <!-- Open In External Tab -->
+              <a href="${site.url}" target="_blank" rel="noopener noreferrer" class="px-1.5 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-sky-400 flex items-center justify-center text-[10px] gap-1 font-medium transition" title="Open live site in new tab">
+                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                <span class="hidden sm:inline">Open</span>
+              </a>
+
+              <!-- Maximize / Fullscreen Modal -->
+              <button onclick="maximizeTile('${site.id}')" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 flex items-center justify-center text-[10px] transition" title="Deep Inspection">
+                <i class="fa-solid fa-expand"></i>
+              </button>
+
+              <!-- Edit details -->
+              <button onclick="openEditModal('${site.id}')" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 flex items-center justify-center text-[10px] transition" title="Edit Site">
+                <i class="fa-solid fa-pencil"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Web Content Body (iFrame + Embed Notice Detector) -->
+          <div class="scale-wrapper flex-1 relative">
+            <div id="loader-${site.id}" class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center gap-2 text-slate-400 z-10 transition-opacity duration-300">
+              <i class="fa-solid fa-circle-notch fa-spin text-xl text-indigo-500"></i>
+              <span class="text-[11px] font-medium tracking-wide">Connecting to ${domainHost}...</span>
+            </div>
+
+            <!-- Fallback Overlay for Headers / Refusals -->
+            <div id="fallback-${site.id}" class="absolute inset-0 bg-slate-950/95 p-5 flex flex-col items-center justify-center text-center z-15 hidden">
+              <div class="w-10 h-10 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2">
+                <i class="fa-solid fa-shield text-sm"></i>
+              </div>
+              <h4 class="text-xs font-semibold text-slate-200 mb-1">Direct Embed Guard Active</h4>
+              <p class="text-[11px] text-slate-400 max-w-xs mb-3">
+                ${domainHost} may restrict framing via security headers. You can launch it instantly or inspect headers.
+              </p>
+              <div class="flex gap-2">
+                <a href="${site.url}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-medium inline-flex items-center gap-1.5 shadow">
+                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Open Live Site
+                </a>
+                <button onclick="maximizeTile('${site.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs">
+                  Inspect
+                </button>
+              </div>
+            </div>
+
+            <iframe
+              id="iframe-${site.id}"
+              src="${site.url}"
+              class="w-full h-full border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+              loading="lazy"
+              onload="onIframeLoad('${site.id}')"
+              onerror="onIframeError('${site.id}')"
+            ></iframe>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Reset default sites list
+    function resetDefaultSites() {
+      sites = JSON.parse(JSON.stringify(TARGET_SITES));
+      saveSites();
+      renderGrid();
+    }
+
+    // Helper to safely escape HTML in user inputs
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Move site position left/right
+    function moveSite(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= sites.length) return;
+      const temp = sites[index];
+      sites[index] = sites[targetIndex];
+      sites[targetIndex] = temp;
+      saveSites();
+      renderGrid();
+    }
+
+    // Reload single iframe
+    function reloadTile(id) {
+      const iframe = document.getElementById(`iframe-${id}`);
+      const loader = document.getElementById(`loader-${id}`);
+      const fallback = document.getElementById(`fallback-${id}`);
+      const icon = document.getElementById(`reload-icon-${id}`);
+
+      if (icon) icon.classList.add('fa-spin');
+      if (loader) loader.classList.remove('hidden', 'opacity-0');
+      if (fallback) fallback.classList.add('hidden');
+
+      if (iframe) {
+        const currentSrc = iframe.src;
+        iframe.src = 'about:blank';
+        setTimeout(() => {
+          iframe.src = currentSrc;
+          if (icon) setTimeout(() => icon.classList.remove('fa-spin'), 600);
+        }, 150);
+      }
+    }
+
+    // Reload all iframes
+    function refreshAllTiles() {
+      const icon = document.getElementById('refresh-all-icon');
+      if (icon) icon.classList.add('fa-spin');
+
+      sites.forEach(site => reloadTile(site.id));
+
+      setTimeout(() => {
+        if (icon) icon.classList.remove('fa-spin');
+      }, 800);
+    }
+
+    // Auto-refresh interval handler
+    function updateAutoRefresh() {
+      const select = document.getElementById('auto-refresh-select');
+      const badge = document.getElementById('timer-countdown');
+      const intervalSec = parseInt(select.value, 10);
+      autoRefreshInterval = intervalSec;
+
+      if (refreshTimerId) clearInterval(refreshTimerId);
+      if (countdownIntervalId) clearInterval(countdownIntervalId);
+
+      if (intervalSec <= 0) {
+        badge.classList.add('hidden');
+        return;
+      }
+
+      secondsLeft = intervalSec;
+      badge.classList.remove('hidden');
+      badge.textContent = `${secondsLeft}s`;
+
+      countdownIntervalId = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft <= 0) {
+          secondsLeft = intervalSec;
+        }
+        badge.textContent = `${secondsLeft}s`;
+      }, 1000);
+
+      refreshTimerId = setInterval(() => {
+        refreshAllTiles();
+      }, intervalSec * 1000);
+    }
+
+    // Iframe load & error callbacks
+    function onIframeLoad(id) {
+      const loader = document.getElementById(`loader-${id}`);
+      if (loader) {
+        loader.classList.add('opacity-0');
+        setTimeout(() => loader.classList.add('hidden'), 300);
+      }
+    }
+
+    function onIframeError(id) {
+      const loader = document.getElementById(`loader-${id}`);
+      const fallback = document.getElementById(`fallback-${id}`);
+      if (loader) loader.classList.add('hidden');
+      if (fallback) fallback.classList.remove('hidden');
+    }
+
+    // Modal Maximize View
+    function maximizeTile(id) {
+      const site = sites.find(s => s.id === id);
+      if (!site) return;
+
+      const modal = document.getElementById('max-modal');
+      const title = document.getElementById('max-modal-title');
+      const urlText = document.getElementById('max-modal-url');
+      const iframe = document.getElementById('max-modal-iframe');
+      const extBtn = document.getElementById('max-modal-external');
+      const refreshBtn = document.getElementById('max-modal-refresh');
+
+      title.textContent = site.title;
+      urlText.textContent = site.url;
+      iframe.src = site.url;
+
+      extBtn.onclick = () => window.open(site.url, '_blank');
+      refreshBtn.onclick = () => {
+        iframe.src = 'about:blank';
+        setTimeout(() => iframe.src = site.url, 150);
+      };
+
+      modal.classList.remove('hidden');
+    }
+
+    // Edit Modal Logic
+    function openEditModal(id = null) {
+      const modal = document.getElementById('site-modal');
+      const titleEl = document.getElementById('modal-title');
+      const formId = document.getElementById('form-site-id');
+      const formTitle = document.getElementById('form-site-title');
+      const formUrl = document.getElementById('form-site-url');
+      const formCat = document.getElementById('form-site-category');
+
+      if (id) {
+        const site = sites.find(s => s.id === id);
+        if (!site) return;
+        titleEl.innerHTML = `<i class="fa-solid fa-pencil text-amber-400"></i> Edit Feed Target`;
+        formId.value = site.id;
+        formTitle.value = site.title;
+        formUrl.value = site.url;
+        formCat.value = site.category || '';
+      } else {
+        titleEl.innerHTML = `<i class="fa-solid fa-plus text-emerald-400"></i> Add New Feed (${sites.length + 1})`;
+        formId.value = '';
+        formTitle.value = '';
+        formUrl.value = 'https://';
+        formCat.value = 'General';
+      }
+
+      modal.classList.remove('hidden');
+      formTitle.focus();
+    }
+
+    function closeModals() {
+      document.getElementById('site-modal').classList.add('hidden');
+      document.getElementById('max-modal').classList.add('hidden');
+      document.getElementById('help-modal').classList.add('hidden');
+      document.getElementById('max-modal-iframe').src = '';
+    }
+
+    // Initialize application when DOM is ready
+    window.addEventListener('DOMContentLoaded', () => {
+      initSites();
+
+      // Setup Event Listeners
+      document.getElementById('site-search-input').addEventListener('input', (e) => {
+        searchQuery = e.target.value.trim();
+        renderGrid();
+      });
+
+      // Refresh All
+      document.getElementById('btn-refresh-all').addEventListener('click', refreshAllTiles);
+
+      // Auto-refresh timer select
+      document.getElementById('auto-refresh-select').addEventListener('change', updateAutoRefresh);
+
+      // Add Site Button
+      document.getElementById('btn-add-site').addEventListener('click', () => openEditModal());
+
+      // Help Button
+      document.getElementById('btn-help').addEventListener('click', () => {
+        document.getElementById('help-modal').classList.remove('hidden');
+      });
+
+      // Reset Button
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        resetDefaultSites();
+      });
+
+      // Modal Closers
+      document.getElementById('modal-close-btn').addEventListener('click', closeModals);
+      document.getElementById('form-cancel-btn').addEventListener('click', closeModals);
+      document.getElementById('max-modal-close').addEventListener('click', closeModals);
+      document.getElementById('help-close-btn').addEventListener('click', closeModals);
+
+      // Preset pills inside Edit Modal
+      document.querySelectorAll('.preset-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          document.getElementById('form-site-title').value = pill.getAttribute('data-name');
+          document.getElementById('form-site-url').value = pill.getAttribute('data-url');
+          document.getElementById('form-site-category').value = pill.getAttribute('data-cat');
+        });
+      });
+
+      // Form Save
+      document.getElementById('site-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('form-site-id').value;
+        const title = document.getElementById('form-site-title').value.trim();
+        const url = document.getElementById('form-site-url').value.trim();
+        const category = document.getElementById('form-site-category').value.trim();
+
+        if (id) {
+          const index = sites.findIndex(s => s.id === id);
+          if (index !== -1) {
+            sites[index] = { ...sites[index], title, url, category };
+          }
+        } else {
+          const newId = 'site-' + Date.now();
+          sites.push({
+            id: newId,
+            title,
+            url,
+            category: category || 'Feed',
+            icon: 'fa-globe'
+          });
+        }
+
+        saveSites();
+        renderGrid();
+        closeModals();
+      });
+
+      // Grid Layout Preset Switches
+      const layoutBtns = document.querySelectorAll('.layout-btn');
+      layoutBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          layoutBtns.forEach(b => b.classList.remove('bg-indigo-600', 'text-white'));
+          btn.classList.add('bg-indigo-600', 'text-white');
+
+          const layout = btn.getAttribute('data-layout');
+          const grid = document.getElementById('sites-grid');
+          grid.className = "grid gap-3.5 transition-all duration-300";
+
+          if (layout === 'auto') grid.classList.add('grid-preset-auto');
+          else if (layout === '4x4') grid.classList.add('grid-preset-4x4');
+          else if (layout === '3x5') grid.classList.add('grid-preset-3x5');
+          else if (layout === '2x7') grid.classList.add('grid-preset-2x7');
+        });
+      });
+
+      // Height Profile Toggle Buttons (S, M, L)
+      const btnS = document.getElementById('height-compact-btn');
+      const btnM = document.getElementById('height-medium-btn');
+      const btnL = document.getElementById('height-tall-btn');
+
+      function updateHeightSelection(selectedBtn, height) {
+        [btnS, btnM, btnL].forEach(b => {
+          b.className = "px-1.5 py-0.5 text-[11px] rounded text-slate-300 hover:text-white";
+        });
+        selectedBtn.className = "px-1.5 py-0.5 text-[11px] rounded bg-slate-700 text-white font-bold";
+        currentTileHeight = height;
+        renderGrid();
+      }
+
+      btnS.addEventListener('click', () => updateHeightSelection(btnS, "330px"));
+      btnM.addEventListener('click', () => updateHeightSelection(btnM, "460px"));
+      btnL.addEventListener('click', () => updateHeightSelection(btnL, "640px"));
+
+      // Dark / Light Theme Toggle
+      const themeBtn = document.getElementById('btn-theme-toggle');
+      const themeIcon = document.getElementById('theme-icon');
+      themeBtn.addEventListener('click', () => {
+        document.documentElement.classList.toggle('dark');
+        document.documentElement.classList.toggle('light');
+        if (document.documentElement.classList.contains('dark')) {
+          themeIcon.className = "fa-solid fa-sun text-amber-400";
+        } else {
+          themeIcon.className = "fa-solid fa-moon text-indigo-400";
+        }
+      });
+
+      // Keyboard Shortcuts
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeModals();
+        } else if ((e.key === 'r' || e.key === 'R') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+          refreshAllTiles();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
